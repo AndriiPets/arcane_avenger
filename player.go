@@ -5,6 +5,7 @@ import (
 	"image/color"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 	"github.com/solarlune/resolv"
 )
@@ -18,10 +19,17 @@ type Player struct {
 	WeaponPositionY float32
 	Health          int
 	Time            float64
-	//cooldowns
+
+	//damage time
 	Vulnerable    bool
 	HitTime       float64
 	InvicibleTime float64
+
+	//spawn projectile
+	SpawnProjectile    bool
+	ProjectileCooldown float64
+	SpawnTime          float64
+	OnCooldown         bool
 
 	Color color.RGBA
 }
@@ -29,13 +37,14 @@ type Player struct {
 func NewPlayer(space *resolv.Space) *Player {
 
 	p := &Player{
-		Object:        resolv.NewObject(32, 128, 16, 16),
-		FacingRight:   true,
-		Direction:     resolv.NewVector(0, 0),
-		Health:        3,
-		Color:         color.RGBA{0, 225, 0, 225},
-		InvicibleTime: 1.0,
-		Vulnerable:    true,
+		Object:             resolv.NewObject(32, 128, 16, 16),
+		FacingRight:        true,
+		Direction:          resolv.NewVector(0, 0),
+		Health:             3,
+		Color:              color.RGBA{0, 225, 0, 225},
+		InvicibleTime:      1.0,
+		ProjectileCooldown: 0.5,
+		Vulnerable:         true,
 	}
 
 	space.Add(p.Object)
@@ -73,7 +82,6 @@ func (p *Player) Update() {
 		if col.HasTags("projectile") {
 			p.take_damage()
 		}
-
 	}
 
 	p.Object.Position.X += dx
@@ -94,6 +102,11 @@ func (p *Player) Update() {
 	p.Object.Position.Y += dy
 
 	p.Object.Update()
+
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		p.spawn_projectile()
+	}
+
 	p.Time += 1.0 / 60.0
 
 	p.update_cooldowns()
@@ -123,8 +136,19 @@ func (p *Player) take_damage() {
 
 }
 
+func (p *Player) spawn_projectile() {
+
+	if !p.OnCooldown {
+		p.SpawnProjectile = true
+
+		p.SpawnTime = p.Time
+		p.OnCooldown = true
+	}
+}
+
 func (p *Player) update_cooldowns() {
 
+	//health cooldown
 	if !p.Vulnerable {
 
 		p.Color = color.RGBA{225, 0, 0, 255}
@@ -134,6 +158,17 @@ func (p *Player) update_cooldowns() {
 			fmt.Println(p.Time - p.HitTime)
 			p.Vulnerable = true
 			p.Color = color.RGBA{0, 225, 0, 225}
+		}
+	}
+
+	//weapon cooldown
+	if p.OnCooldown {
+
+		if p.Time-p.SpawnTime >= p.ProjectileCooldown {
+
+			fmt.Println("cooldown end", p.Time)
+			p.OnCooldown = false
+
 		}
 	}
 }

@@ -1,7 +1,7 @@
 package main
 
 import (
-	//"fmt"
+	"fmt"
 	"image/color"
 	"log"
 	"time"
@@ -36,8 +36,8 @@ func NewGame() *Game {
 
 		for {
 
-			//fmt.Println("FPS: ", ebiten.ActualFPS())
-			//fmt.Println("Ticks: ", ebiten.ActualTPS())
+			fmt.Println("FPS: ", ebiten.ActualFPS())
+			fmt.Println("Ticks: ", ebiten.ActualTPS())
 			time.Sleep(time.Second)
 
 		}

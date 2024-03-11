@@ -38,7 +38,7 @@ func SpawnBlueProjectile(space *resolv.Space, position resolv.Vector, direction 
 func (p *BlueProjectile) Update() {
 	//p.Speed.Y += 0.1
 
-	px := p.Speed.X * 4
+	px := p.Speed.X * 4 //speed 4
 	py := p.Speed.Y * 4
 
 	if check := p.Object.Check(px, 0, "solid"); check != nil {

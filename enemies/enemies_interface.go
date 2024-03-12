@@ -6,8 +6,12 @@ import (
 )
 
 type EnemyInterface interface {
-	Update()
+	Update(*resolv.Object)
 	Draw(*ebiten.Image)
 	IsAlive() bool
 	GetObject() *resolv.Object
+	DeathDrop() bool
+	GetColor() string
+	HitPlayer() bool
+	HitPlayerComplete()
 }

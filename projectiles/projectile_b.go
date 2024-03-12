@@ -8,25 +8,27 @@ import (
 	"github.com/solarlune/resolv"
 )
 
-type BlueProjectile struct {
+type ProjectileB struct {
 	Space     *resolv.Space
 	Type      string
 	Object    *resolv.Object
 	Size      float64
 	Speed     resolv.Vector
 	Alive     bool
+	Color     color.RGBA
 	BounceNum int
 }
 
-func SpawnBlueProjectile(space *resolv.Space, position resolv.Vector, direction resolv.Vector, size float64) *BlueProjectile {
+func SpawnProjectileB(space *resolv.Space, position resolv.Vector, direction resolv.Vector, color color.RGBA, size float64) *ProjectileB {
 
-	p := &BlueProjectile{
+	p := &ProjectileB{
 		Space:     space,
 		Object:    resolv.NewObject(position.X, position.Y, size, size),
 		Size:      size,
 		Speed:     direction,
 		Alive:     true,
 		BounceNum: 3,
+		Color:     color,
 	}
 
 	p.Object.AddTags("projectile")
@@ -35,11 +37,11 @@ func SpawnBlueProjectile(space *resolv.Space, position resolv.Vector, direction 
 	return p
 }
 
-func (p *BlueProjectile) Update() {
+func (p *ProjectileB) Update() {
 	//p.Speed.Y += 0.1
 
-	px := p.Speed.X * 4 //speed 4
-	py := p.Speed.Y * 4
+	px := p.Speed.X * 6 //speed 4
+	py := p.Speed.Y * 6
 
 	if check := p.Object.Check(px, 0, "solid"); check != nil {
 
@@ -72,15 +74,14 @@ func (p *BlueProjectile) Update() {
 	p.Object.Update()
 }
 
-func (p *BlueProjectile) Draw(screen *ebiten.Image) {
-	p_color := color.RGBA{30, 144, 255, 255} // blue
-	vector.DrawFilledCircle(screen, float32(p.Object.Position.X), float32(p.Object.Position.Y), 4, p_color, false)
+func (p *ProjectileB) Draw(screen *ebiten.Image) {
+	vector.DrawFilledCircle(screen, float32(p.Object.Position.X), float32(p.Object.Position.Y), 4, p.Color, false)
 }
 
-func (p *BlueProjectile) IsAlive() bool {
+func (p *ProjectileB) IsAlive() bool {
 	return p.Alive
 }
 
-func (p *BlueProjectile) GetObject() *resolv.Object {
+func (p *ProjectileB) GetObject() *resolv.Object {
 	return p.Object
 }

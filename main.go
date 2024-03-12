@@ -10,12 +10,20 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/solarlune/resolv"
+	"golang.org/x/image/math/f64"
+)
+
+const (
+	screenWidth  int = 640
+	screenHeight int = 360
 )
 
 type Game struct {
 	Width, Height int
 	World         WorldInterface
 	Screen        *ebiten.Image
+	WorldScreen   *ebiten.Image
+	Camera        *Camera
 	Time          float64
 	Debug         bool
 }
@@ -26,9 +34,12 @@ func NewGame() *Game {
 	ebiten.SetWindowTitle("Arcane Avenger")
 
 	g := &Game{
-		Width:  640,
-		Height: 360,
+		Width:  screenWidth,
+		Height: screenHeight,
 	}
+
+	g.Camera = &Camera{ViewPort: f64.Vec2{float64(screenWidth), float64(screenHeight)}}
+	g.WorldScreen = ebiten.NewImage(screenWidth*2, screenHeight*2)
 
 	g.World = NewWorld(g)
 
@@ -57,6 +68,7 @@ func (g *Game) Update() error {
 
 	world := g.World
 	world.Update()
+	g.Camera.Update(world.GetPlayerPos(g.Width, g.Height))
 
 	g.Time += 1.0 / 60.0
 
@@ -65,8 +77,26 @@ func (g *Game) Update() error {
 
 func (g *Game) Draw(screen *ebiten.Image) {
 	g.Screen = screen
-	screen.Fill(color.RGBA{20, 20, 40, 225})
-	g.World.Draw(screen)
+	//screen.Fill(color.RGBA{20, 20, 40, 225})
+	g.WorldScreen.Fill(color.RGBA{20, 20, 40, 225})
+	g.World.Draw(g.WorldScreen)
+
+	g.Camera.Render(g.WorldScreen, screen)
+
+	//camera debug stuff
+	worldX, worldY := g.Camera.ScreenToWorld(ebiten.CursorPosition())
+	ebitenutil.DebugPrint(
+		screen,
+		fmt.Sprintf("TPS: %0.2f\nMove (WASD/Arrows)\nZoom (QE)\nRotate (R)\nReset (Space)", ebiten.ActualTPS()),
+	)
+
+	ebitenutil.DebugPrintAt(
+		screen,
+		fmt.Sprintf("%s\nCursor World Pos: %.2f,%.2f",
+			g.Camera.String(),
+			worldX, worldY),
+		0, screenHeight-32,
+	)
 }
 
 func (g *Game) DebugDraw(screen *ebiten.Image, space *resolv.Space) {

@@ -40,8 +40,8 @@ func NewWorld(g *Game) *World {
 
 func (w *World) Init() {
 
-	gw := float64(w.Game.Width)
-	gh := float64(w.Game.Height)
+	gw := float64(w.Game.Width) * 2
+	gh := float64(w.Game.Height) * 2
 
 	cell_size := 8
 
@@ -71,7 +71,7 @@ func (w *World) Init() {
 
 func (w *World) Update() {
 
-	w.Player.Update()
+	w.Player.Update(w.Game.Camera.cursorX, w.Game.Camera.cursorY)
 
 	//spawn projectile
 	if w.Player.SpawnProjectile {
@@ -105,7 +105,14 @@ func (w *World) Update() {
 		e := enemies.NewEnemy(w.Space, resolv.NewVector(float64(w.Player.WeaponPositionX+20), float64(w.Player.WeaponPositionY+20)))
 		w.Enemies[uuid.New()] = e
 	}
-	//player picked up the powerup
+
+	if ebiten.IsKeyPressed(ebiten.KeyR) {
+		w.Game.Camera.Rotation += 1
+	}
+
+	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+		w.Game.Camera.Reset()
+	}
 
 	//update projectiles
 	for key, p := range w.Projectiles {
@@ -119,12 +126,33 @@ func (w *World) Update() {
 
 	//update enemies
 	for key, e := range w.Enemies {
+
+		if e.HitPlayer() {
+
+			w.Player.take_damage()
+			e.HitPlayerComplete()
+
+		}
+
 		if !e.IsAlive() {
+
+			if e.DeathDrop() {
+
+				p := powerups.SpawnColorPowerup(
+					w.Space,
+					e.GetColor(),
+					resolv.NewVector(float64(e.GetObject().Right()), float64(e.GetObject().Bottom())),
+					4,
+				)
+				w.Powerups[uuid.New()] = p
+
+			}
+
 			delete(w.Enemies, key)
 			w.Space.Remove(e.GetObject())
 		}
 
-		e.Update()
+		e.Update(w.Player.Object)
 	}
 
 	//update powerups
@@ -145,6 +173,13 @@ func (w *World) Update() {
 
 func (w *World) fill_color(color string) {
 	w.ProjectileSpawner.AddColor(color)
+}
+
+func (w *World) GetPlayerPos(screenX, screenY int) (float64, float64) {
+	cx := w.Player.Object.Position.X - (float64(screenX) / 2)
+	cy := w.Player.Object.Position.Y - (float64(screenY) / 2)
+	//fmt.Println(w.Player.Object.Position.X, w.Player.Object.Position.Y)
+	return cx, cy
 }
 
 func (w *World) Draw(screen *ebiten.Image) {
@@ -181,15 +216,6 @@ func (w *World) Draw(screen *ebiten.Image) {
 	for _, e := range w.Enemies {
 		e.Draw(screen)
 	}
-
-	//draw aim circle
-	mouseX, mouseY := ebiten.CursorPosition()
-	mx, my := float32(mouseX), float32(mouseY)
-
-	aimColor := color.RGBA{0, 225, 0, 225}
-
-	vector.StrokeCircle(screen, mx, my, 12, 2, aimColor, false)
-	vector.DrawFilledCircle(screen, mx, my, 2, aimColor, false)
 
 	if w.Game.Debug {
 		w.Game.DebugDraw(screen, w.Space)

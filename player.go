@@ -5,7 +5,6 @@ import (
 	"image/color"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 	"github.com/solarlune/resolv"
 )
@@ -43,17 +42,17 @@ func NewPlayer(space *resolv.Space) *Player {
 		Health:             3,
 		Color:              color.RGBA{0, 225, 0, 225},
 		InvicibleTime:      1.0,
-		ProjectileCooldown: 0.5,
+		ProjectileCooldown: 0.4,
 		Vulnerable:         true,
 	}
 
 	space.Add(p.Object)
-	p.Object.AddTags("player")
+	p.Object.AddTags("player", "entity")
 
 	return p
 }
 
-func (p *Player) Update() {
+func (p *Player) Update(cursorX, cursorY float64) {
 	dx, dy := 0.0, 0.0
 	speed := 2.0
 
@@ -75,11 +74,11 @@ func (p *Player) Update() {
 
 	if col := p.Object.Check(dx, 0); col != nil {
 
-		if col.HasTags("solid") {
+		if col.HasTags("solid", "entity") {
 			dx = col.ContactWithCell(col.Cells[0]).X
 		}
 
-		if col.HasTags("projectile") {
+		if col.HasTags("projectile", "enemy") {
 			p.take_damage()
 		}
 	}
@@ -88,11 +87,11 @@ func (p *Player) Update() {
 
 	if col := p.Object.Check(0, dy); col != nil {
 
-		if col.HasTags("solid") {
+		if col.HasTags("solid", "entity") {
 			dy = col.ContactWithCell(col.Cells[0]).Y
 		}
 
-		if col.HasTags("projectile") {
+		if col.HasTags("projectile", "enemy") {
 			p.take_damage()
 		}
 
@@ -103,7 +102,7 @@ func (p *Player) Update() {
 
 	p.Object.Update()
 
-	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 		p.spawn_projectile()
 	}
 
@@ -111,9 +110,9 @@ func (p *Player) Update() {
 
 	p.update_cooldowns()
 
-	mouseX, mouseY := ebiten.CursorPosition()
+	//calculate weapon direction vector
 
-	mouse_vec := resolv.NewVector(float64(mouseX)-12, float64(mouseY)-12)
+	mouse_vec := resolv.NewVector(cursorX-12, cursorY-12)
 	player_vec := resolv.NewVector(p.Object.Position.X, p.Object.Position.Y)
 
 	projectile_unit := mouse_vec.Sub(player_vec)
@@ -177,7 +176,13 @@ func (p *Player) Draw(screen *ebiten.Image) {
 
 	posX, posY := float32(p.Object.Position.X), float32(p.Object.Position.Y)
 	sizeX, sizeY := float32(p.Object.Size.X), float32(p.Object.Size.Y)
-	weapon_vector := p.Direction.Scale(20)
+	var weapon_vector resolv.Vector
+
+	if p.OnCooldown {
+		weapon_vector = p.Direction.Scale(10)
+	} else {
+		weapon_vector = p.Direction.Scale(20)
+	}
 
 	centerX, CenterY := posX+(sizeX/2), posY+(sizeY/2)
 	weapon_position_x, weapon_position_y := centerX+float32(weapon_vector.X), CenterY+float32(weapon_vector.Y)

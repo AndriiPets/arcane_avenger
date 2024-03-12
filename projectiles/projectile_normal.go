@@ -15,9 +15,10 @@ type NormalProjectile struct {
 	Size   float64
 	Speed  resolv.Vector
 	Alive  bool
+	Color  color.RGBA
 }
 
-func SpawnNormalProjectile(space *resolv.Space, position resolv.Vector, direction resolv.Vector, size float64) *NormalProjectile {
+func SpawnNormalProjectile(space *resolv.Space, position resolv.Vector, direction resolv.Vector, color color.RGBA, size float64) *NormalProjectile {
 
 	p := &NormalProjectile{
 		Space:  space,
@@ -25,6 +26,7 @@ func SpawnNormalProjectile(space *resolv.Space, position resolv.Vector, directio
 		Size:   size,
 		Speed:  direction,
 		Alive:  true,
+		Color:  color,
 	}
 
 	p.Object.AddTags("projectile")
@@ -36,8 +38,8 @@ func SpawnNormalProjectile(space *resolv.Space, position resolv.Vector, directio
 func (p *NormalProjectile) Update() {
 	//p.Speed.Y += 0.1
 
-	px := p.Speed.X * 4
-	py := p.Speed.Y * 4
+	px := p.Speed.X * 6
+	py := p.Speed.Y * 6
 
 	if check := p.Object.Check(px, 0, "solid"); check != nil {
 
@@ -59,8 +61,7 @@ func (p *NormalProjectile) Update() {
 }
 
 func (p *NormalProjectile) Draw(screen *ebiten.Image) {
-	p_color := color.RGBA{255, 255, 255, 255}
-	vector.DrawFilledCircle(screen, float32(p.Object.Position.X), float32(p.Object.Position.Y), 4, p_color, false)
+	vector.DrawFilledCircle(screen, float32(p.Object.Position.X), float32(p.Object.Position.Y), 4, p.Color, false)
 }
 
 func (p *NormalProjectile) IsAlive() bool {

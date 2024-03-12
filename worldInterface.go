@@ -6,4 +6,5 @@ type WorldInterface interface {
 	Init()
 	Update()
 	Draw(*ebiten.Image)
+	GetPlayerPos(int, int) (float64, float64)
 }

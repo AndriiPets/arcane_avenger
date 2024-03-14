@@ -1,12 +1,24 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"image"
 	"image/color"
+	"log"
+	"math"
+	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 	"github.com/solarlune/resolv"
+	"github.com/yohamta/ganim8/v2"
+
+	"github.com/AndriiPets/ArcaneAvenger/resources/images"
+)
+
+var (
+	sprite_image *ebiten.Image
 )
 
 type Player struct {
@@ -30,24 +42,34 @@ type Player struct {
 	SpawnTime          float64
 	OnCooldown         bool
 
+	IsMoving bool
+
 	Color color.RGBA
+
+	Animation   *ganim8.Animation
+	SpriteImage *ebiten.Image
+
+	Dead bool
 }
 
 func NewPlayer(space *resolv.Space) *Player {
 
 	p := &Player{
-		Object:             resolv.NewObject(32, 128, 16, 16),
+		Object:             resolv.NewObject(550, 128, 16, 16),
 		FacingRight:        true,
 		Direction:          resolv.NewVector(0, 0),
-		Health:             3,
+		Health:             4,
 		Color:              color.RGBA{0, 225, 0, 225},
 		InvicibleTime:      1.0,
-		ProjectileCooldown: 0.4,
+		ProjectileCooldown: 0.3,
 		Vulnerable:         true,
+		IsMoving:           false,
+		Dead:               false,
 	}
 
 	space.Add(p.Object)
 	p.Object.AddTags("player", "entity")
+	p.setup_animations()
 
 	return p
 }
@@ -78,7 +100,7 @@ func (p *Player) Update(cursorX, cursorY float64) {
 			dx = col.ContactWithCell(col.Cells[0]).X
 		}
 
-		if col.HasTags("projectile", "enemy") {
+		if col.HasTags("projectile", "enemy", "explosion") {
 			p.take_damage()
 		}
 	}
@@ -91,7 +113,7 @@ func (p *Player) Update(cursorX, cursorY float64) {
 			dy = col.ContactWithCell(col.Cells[0]).Y
 		}
 
-		if col.HasTags("projectile", "enemy") {
+		if col.HasTags("projectile", "enemy", "explosion") {
 			p.take_damage()
 		}
 
@@ -102,6 +124,9 @@ func (p *Player) Update(cursorX, cursorY float64) {
 
 	p.Object.Update()
 
+	p.check_movement(dx, dy)
+	p.Animation.Update()
+
 	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 		p.spawn_projectile()
 	}
@@ -109,6 +134,10 @@ func (p *Player) Update(cursorX, cursorY float64) {
 	p.Time += 1.0 / 60.0
 
 	p.update_cooldowns()
+
+	if p.Health <= 0 {
+		p.Dead = true
+	}
 
 	//calculate weapon direction vector
 
@@ -119,6 +148,36 @@ func (p *Player) Update(cursorX, cursorY float64) {
 	projectile_unit = projectile_unit.Unit()
 	p.Direction = projectile_unit
 
+}
+
+func (p *Player) check_movement(x, y float64) {
+
+	if x == 0.0 && y == 0.0 {
+		p.IsMoving = false
+	} else {
+		p.IsMoving = true
+	}
+}
+
+func (p *Player) Reset() {
+	p.Health = 4
+	p.Object.Position.X = 550
+	p.Object.Position.Y = 128
+}
+
+func (p *Player) setup_animations() {
+
+	img, _, err := image.Decode(bytes.NewReader(images.MainSprite))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	sprite_image := ebiten.NewImageFromImage(img)
+	p.SpriteImage = sprite_image
+
+	g16 := ganim8.NewGrid(16, 16, 48, 80)
+
+	p.Animation = ganim8.New(sprite_image, g16.Frames(1, 1, 2, 1, 3, 1), time.Millisecond*300)
 }
 
 func (p *Player) take_damage() {
@@ -143,6 +202,10 @@ func (p *Player) spawn_projectile() {
 		p.SpawnTime = p.Time
 		p.OnCooldown = true
 	}
+}
+
+func (p *Player) SetPojectileCooldown(cooldown float64) {
+	p.ProjectileCooldown = cooldown
 }
 
 func (p *Player) update_cooldowns() {
@@ -190,15 +253,53 @@ func (p *Player) Draw(screen *ebiten.Image) {
 	p.WeaponPositionX = weapon_position_x
 	p.WeaponPositionY = weapon_position_y
 
-	weapon_color := color.RGBA{255, 255, 255, 255}
+	//weapon_color := color.RGBA{255, 255, 255, 255}
 
+	//vector.DrawFilledRect(
+	//	screen,
+	//	posX,
+	//	posY,
+	//	sizeX,
+	//	sizeY,
+	//	p.Color, false)
+
+	if p.IsMoving {
+		p.Animation.Draw(screen, ganim8.DrawOpts(float64(posX), float64(posY)))
+	} else {
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Translate(float64(posX), float64(posY))
+
+		screen.DrawImage(p.SpriteImage.SubImage(image.Rect(16, 0, 32, 16)).(*ebiten.Image), op)
+	}
+
+	//vector.DrawFilledCircle(screen, p.WeaponPositionX, p.WeaponPositionY, 7, weapon_color, false)
+
+	op := &ebiten.DrawImageOptions{}
+
+	angle := math.Atan2(float64(p.WeaponPositionX), float64(p.WeaponPositionY))
+	degrees := 180 * angle / math.Pi
+
+	op.GeoM.Translate(float64(-16/2), float64(-16/2))
+	op.GeoM.Rotate(math.Round(degrees))
+	op.GeoM.Translate(float64(p.WeaponPositionX), float64(p.WeaponPositionY))
+
+	screen.DrawImage(p.SpriteImage.SubImage(image.Rect(16, 16, 32, 32)).(*ebiten.Image), op)
+
+	//healthbar frame
 	vector.DrawFilledRect(
 		screen,
-		posX,
-		posY,
-		sizeX,
-		sizeY,
-		p.Color, false)
+		posX+1,
+		posY-11,
+		float32(p.Health)*4+2,
+		6,
+		color.RGBA{255, 255, 255, 255}, false)
 
-	vector.DrawFilledCircle(screen, p.WeaponPositionX, p.WeaponPositionY, 7, weapon_color, false)
+	//healthbar
+	vector.DrawFilledRect(
+		screen,
+		posX+2,
+		posY-10,
+		float32(p.Health)*4,
+		4,
+		color.RGBA{255, 0, 0, 255}, false)
 }

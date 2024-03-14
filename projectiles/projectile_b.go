@@ -6,6 +6,8 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 	"github.com/solarlune/resolv"
+
+	"github.com/AndriiPets/ArcaneAvenger/particles"
 )
 
 type ProjectileB struct {
@@ -17,6 +19,7 @@ type ProjectileB struct {
 	Alive     bool
 	Color     color.RGBA
 	BounceNum int
+	Particle  *particles.ParticleSpawner
 }
 
 func SpawnProjectileB(space *resolv.Space, position resolv.Vector, direction resolv.Vector, color color.RGBA, size float64) *ProjectileB {
@@ -31,6 +34,8 @@ func SpawnProjectileB(space *resolv.Space, position resolv.Vector, direction res
 		Color:     color,
 	}
 
+	p.Particle = particles.NewParticleSpawner(p.Object, p.Color, "circle", true)
+
 	p.Object.AddTags("projectile")
 	space.Add(p.Object)
 
@@ -43,16 +48,13 @@ func (p *ProjectileB) Update() {
 	px := p.Speed.X * 6 //speed 4
 	py := p.Speed.Y * 6
 
+	p.Particle.Update(resolv.NewVector(px, py))
+
 	if check := p.Object.Check(px, 0, "solid"); check != nil {
 
 		px = check.ContactWithCell(check.Cells[0]).X
+		p.check_bounce(false)
 
-		if p.BounceNum > 0 {
-			p.Speed.X *= -1
-			p.BounceNum -= 1
-		} else {
-			p.Alive = false
-		}
 	}
 
 	p.Object.Position.X += px
@@ -60,13 +62,8 @@ func (p *ProjectileB) Update() {
 	if check := p.Object.Check(0, py, "solid"); check != nil {
 
 		py = check.ContactWithCell(check.Cells[0]).Y
+		p.check_bounce(true)
 
-		if p.BounceNum > 0 {
-			p.Speed.Y *= -1
-			p.BounceNum -= 1
-		} else {
-			p.Alive = false
-		}
 	}
 
 	p.Object.Position.Y += py
@@ -74,8 +71,26 @@ func (p *ProjectileB) Update() {
 	p.Object.Update()
 }
 
+func (p *ProjectileB) check_bounce(vert bool) {
+
+	if p.BounceNum > 0 {
+
+		if vert {
+			p.Speed.Y *= -1
+		} else {
+			p.Speed.X *= -1
+		}
+
+		p.BounceNum -= 1
+	} else {
+		p.Alive = false
+	}
+
+}
+
 func (p *ProjectileB) Draw(screen *ebiten.Image) {
 	vector.DrawFilledCircle(screen, float32(p.Object.Position.X), float32(p.Object.Position.Y), 4, p.Color, false)
+	p.Particle.Draw(screen)
 }
 
 func (p *ProjectileB) IsAlive() bool {

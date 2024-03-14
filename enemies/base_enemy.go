@@ -40,7 +40,7 @@ func NewEnemy(space *resolv.Space, position resolv.Vector) EnemyInterface {
 		Object:        resolv.NewObject(position.X, position.Y, 16, 16),
 		Health:        3,
 		Color:         colors[pick],
-		InvicibleTime: 1.0,
+		InvicibleTime: 0.5,
 		Vulnerable:    true,
 		Alive:         true,
 		ColorName:     names[pick],
@@ -82,13 +82,13 @@ func (e *BaseEnemy) update_cooldowns() {
 	//health cooldown
 	if !e.Vulnerable {
 
-		e.Color = color.RGBA{225, 0, 0, 255}
+		//e.Color = color.RGBA{225, 0, 0, 255}
 
 		if e.Time-e.HitTime >= e.InvicibleTime {
 
 			fmt.Println(e.Time - e.HitTime)
 			e.Vulnerable = true
-			e.Color = color.RGBA{0, 225, 0, 225}
+			//e.Color = color.RGBA{0, 225, 0, 225}
 		}
 	}
 }
@@ -117,7 +117,7 @@ func (e *BaseEnemy) Update(p *resolv.Object) {
 			e.PlayerDamaged = true
 		}
 
-		if col.HasTags("projectile") {
+		if col.HasTags("projectile", "explosion") {
 			e.take_damage()
 		}
 	}
@@ -134,7 +134,7 @@ func (e *BaseEnemy) Update(p *resolv.Object) {
 			e.PlayerDamaged = true
 		}
 
-		if col.HasTags("projectile") {
+		if col.HasTags("projectile", "explosion") {
 			e.take_damage()
 		}
 	}
@@ -155,6 +155,10 @@ func (e *BaseEnemy) IsAlive() bool {
 	return e.Alive
 }
 
+func (e *BaseEnemy) IsVunerable() bool {
+	return e.Vulnerable
+}
+
 func (e *BaseEnemy) HitPlayer() bool {
 	return e.PlayerDamaged
 }
@@ -166,7 +170,7 @@ func (e *BaseEnemy) HitPlayerComplete() {
 func (e *BaseEnemy) DeathDrop() bool {
 
 	chance := rand.Intn(10)
-	if chance >= 5 {
+	if chance >= 6 {
 		return true
 	}
 	return false
@@ -186,6 +190,10 @@ func (e *BaseEnemy) GetColor() string {
 	return e.ColorName
 }
 
+func (e *BaseEnemy) GetColorRGBA() color.RGBA {
+	return e.Color
+}
+
 func (e *BaseEnemy) Draw(screen *ebiten.Image) {
 
 	posX, posY := float32(e.Object.Position.X), float32(e.Object.Position.Y)
@@ -198,5 +206,23 @@ func (e *BaseEnemy) Draw(screen *ebiten.Image) {
 		sizeX,
 		sizeY,
 		e.Color, false)
+
+	//healthbar frame
+	vector.DrawFilledRect(
+		screen,
+		posX+1,
+		posY-11,
+		float32(e.Health)*4+2,
+		6,
+		color.RGBA{255, 255, 255, 255}, false)
+
+	//healthbar
+	vector.DrawFilledRect(
+		screen,
+		posX+2,
+		posY-10,
+		float32(e.Health)*4,
+		4,
+		color.RGBA{255, 0, 0, 255}, false)
 
 }

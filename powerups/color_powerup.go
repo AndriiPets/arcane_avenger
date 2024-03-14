@@ -49,7 +49,8 @@ func (p *ColorPowerup) Update() {
 }
 
 func (p *ColorPowerup) Draw(screen *ebiten.Image) {
-	vector.StrokeCircle(screen, float32(p.Object.Position.X), float32(p.Object.Position.Y), 4, 3, p.ColorMap[p.Color], false)
+	vector.DrawFilledCircle(screen, float32(p.Object.Position.X), float32(p.Object.Position.Y), 5, color.RGBA{255, 255, 255, 225}, false)
+	vector.DrawFilledCircle(screen, float32(p.Object.Position.X), float32(p.Object.Position.Y), 4, p.ColorMap[p.Color], false)
 }
 
 func (p *ColorPowerup) IsPickedUp() bool {

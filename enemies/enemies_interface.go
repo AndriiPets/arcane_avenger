@@ -1,6 +1,8 @@
 package enemies
 
 import (
+	"image/color"
+
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/solarlune/resolv"
 )
@@ -14,4 +16,6 @@ type EnemyInterface interface {
 	GetColor() string
 	HitPlayer() bool
 	HitPlayerComplete()
+	IsVunerable() bool
+	GetColorRGBA() color.RGBA
 }
